@@ -24,15 +24,23 @@ io.on('connection', (socket) => {
     })
     //for sending offer to clients
     socket.on('send-offer', (roomid, offer) => {
+        console.log('Offer sent',offer);   
         io.to(roomid).emit('recieve-offer', offer);
     })
     //for creating offer
     socket.on('send-answer', (roomid, answer) => {
+        console.log('Answer sent', answer);
         io.to(roomid).emit('recieve-answer', answer);
     })
-    //send ice candidate
+    //send ice candidate to users
     socket.on('send-icecandidate', (roomid, icecandidate) => {
+        console.log('Ice candidate sent', icecandidate);
         io.to(roomid).emit('recieve-icecandidate', icecandidate);
+    })
+    //send ice candidate to admin
+    socket.on('send-icecandidate-admin', (roomid, icecandidate) => {
+        console.log('Ice candidate sent to admin', icecandidate);
+        io.to(roomid).emit('recieve-icecandidate-admin', icecandidate);
     })
     //disconnecting from the server
     socket.on('disconnect', () => {
