@@ -1,26 +1,47 @@
 import express from 'express';
 import { createServer } from 'node:http';
-import {Server} from 'socket.io';
+import { Server } from 'socket.io';
 const app = express();
-const server =createServer(app);
-const io = new Server(server,{
-    cors:{
-        origin:'*',
-        methods:['GET','POST'],
-        credentials:true
+const server = createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST'],
+        credentials: true
     }
 });
 
-io.on('connection',(socket)=>{
-    console.log('A user connected',socket.id);
+io.on('connection', (socket) => {
+    console.log('A user connected', socket.id);
+    //joing in a room
+    socket.on('join-room', (roomid) => {
+        socket.join(roomid);
+        console.log('User joined room', roomid);
+    })
+    //for sending message to clients
+    socket.on('send-message', (roomid, message) => {
+        io.to(roomid).emit('recieve-message', message);
+    })
+    //for sending offer to clients
+    socket.on('send-offer', (roomid, offer) => {
+        io.to(roomid).emit('recieve-offer', offer);
+    })
+    //for creating offer
+    socket.on('send-answer', (roomid, answer) => {
+        io.to(roomid).emit('recieve-answer', answer);
+    })
+    //send ice candidate
+    socket.on('send-icecandidate', (roomid, icecandidate) => {
+        io.to(roomid).emit('recieve-icecandidate', icecandidate);
+    })
     //disconnecting from the server
-    socket.on('disconnect',()=>{
-        console.log('User disconnected',socket.id);
+    socket.on('disconnect', () => {
+        console.log('User disconnected', socket.id);
     })
 })
 
 
-app.get("/",(req,res)=>{
+app.get("/", (req, res) => {
     res.send('Hello World bro');
 })
 server.listen(3000, () => {

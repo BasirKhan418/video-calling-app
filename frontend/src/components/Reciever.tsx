@@ -43,7 +43,8 @@ console.log('Connected to server');
       </div>
       <div className='flex justify-center items-center p-4 bg-gray-100 rounded m-1'>
       <h1 className='text-lg font-light r'>
-        Waiting for the other person to join the stream.
+        Wait for the admin to start the stream.
+       
       </h1>
       </div>
     </>

@@ -17,6 +17,27 @@ const io = new socket_io_1.Server(server, {
 });
 io.on('connection', (socket) => {
     console.log('A user connected', socket.id);
+    //joing in a room
+    socket.on('join-room', (roomid) => {
+        socket.join(roomid);
+        console.log('User joined room', roomid);
+    });
+    //for sending message to clients
+    socket.on('send-message', (roomid, message) => {
+        io.to(roomid).emit('recieve-message', message);
+    });
+    //for sending offer to clients
+    socket.on('send-offer', (roomid, offer) => {
+        io.to(roomid).emit('recieve-offer', offer);
+    });
+    //for creating offer
+    socket.on('send-answer', (roomid, answer) => {
+        io.to(roomid).emit('recieve-answer', answer);
+    });
+    //send ice candidate
+    socket.on('send-icecandidate', (roomid, icecandidate) => {
+        io.to(roomid).emit('recieve-icecandidate', icecandidate);
+    });
     //disconnecting from the server
     socket.on('disconnect', () => {
         console.log('User disconnected', socket.id);

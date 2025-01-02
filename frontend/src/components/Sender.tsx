@@ -43,7 +43,8 @@ console.log('Connected to server');
       </div>
       <div className='flex justify-center items-center p-4 bg-gray-100 rounded m-1'>
       <h1 className='text-lg font-light r'>
-        Waiting for the other person to join the stream.
+        Waiting for the other person to join the stream. 
+        <button className='bg-red-600 text-white px-4 py-2 rounded-md mx-2 my-2 hover:bg-red-800'>Start the Stream</button>
       </h1>
       </div>
     </>
