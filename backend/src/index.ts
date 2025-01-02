@@ -3,10 +3,20 @@ import { createServer } from 'node:http';
 import {Server} from 'socket.io';
 const app = express();
 const server =createServer(app);
-const io = new Server(server);
+const io = new Server(server,{
+    cors:{
+        origin:'*',
+        methods:['GET','POST'],
+        credentials:true
+    }
+});
 
 io.on('connection',(socket)=>{
     console.log('A user connected',socket.id);
+    //disconnecting from the server
+    socket.on('disconnect',()=>{
+        console.log('User disconnected',socket.id);
+    })
 })
 
 

@@ -8,9 +8,19 @@ const node_http_1 = require("node:http");
 const socket_io_1 = require("socket.io");
 const app = (0, express_1.default)();
 const server = (0, node_http_1.createServer)(app);
-const io = new socket_io_1.Server(server);
+const io = new socket_io_1.Server(server, {
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST'],
+        credentials: true
+    }
+});
 io.on('connection', (socket) => {
     console.log('A user connected', socket.id);
+    //disconnecting from the server
+    socket.on('disconnect', () => {
+        console.log('User disconnected', socket.id);
+    });
 });
 app.get("/", (req, res) => {
     res.send('Hello World bro');
