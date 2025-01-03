@@ -46,6 +46,14 @@ io.on('connection', (socket) => {
         console.log('Ice candidate sent to admin', icecandidate);
         io.to(roomid).emit('recieve-icecandidate-admin', icecandidate);
     });
+    socket.on('send-icecandidate-admin', (roomid, icecandidate) => {
+        console.log('Ice candidate sent to admin', icecandidate);
+        io.to(roomid).emit('recieve-icecandidate-admin', icecandidate);
+    });
+    socket.on('send-icecandidate-admin', (roomid, icecandidate) => {
+        console.log('Ice candidate sent to admin', icecandidate);
+        io.to(roomid).emit('recieve-icecandidate-admin', icecandidate);
+    });
     //disconnecting from the server
     socket.on('disconnect', () => {
         console.log('User disconnected', socket.id);

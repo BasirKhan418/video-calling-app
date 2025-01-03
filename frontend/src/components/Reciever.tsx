@@ -1,98 +1,180 @@
-
-import React, { useEffect, useMemo, useState,useRef } from 'react'
+// Receiver.tsx
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { io } from 'socket.io-client';
 import { FaRegCopy } from "react-icons/fa";
 import { useSearchParams } from 'react-router-dom';
-const Reciever = () => {
+
+const Receiver = () => {
     const [iscopy, setIscopy] = React.useState(false);
     const [pc, setPC] = useState<RTCPeerConnection | null>(null);
-    const socket = useMemo(() => io('http://localhost:3000'), [])
+    const [hasTrack, setHasTrack] = useState(false);
+    const [hasScreenShare, setHasScreenShare] = useState(false);
+    const socket = useMemo(() => io('http://localhost:3000'), []);
     const [searchParams] = useSearchParams();
     const id = searchParams.get('id');
-    const ref = useRef<HTMLVideoElement>(null);
-    useEffect(()=>{
-  socket.on('connect',()=>{
-    if(id){
-        socket.emit('join-room',id);
-    }
-    socket.on('recieve-offer',(offer)=>{
-        console.log('Offer recieved',offer);
-        const pc = new RTCPeerConnection({
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' }, // Public STUN server
-            ],
-          });
-        pc.ontrack = (e) => {
-            console.log('Received stream:', e);
-            if (ref.current) {
-              const stream = ref.current.srcObject || new MediaStream();
-              stream.addTrack(e.track);
-              ref.current.srcObject = stream;
-              ref.current.play();
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const screenRef = useRef<HTMLVideoElement>(null);
+    const [videoStream] = useState<MediaStream>(new MediaStream());
+    const [screenStream] = useState<MediaStream>(new MediaStream());
+
+    const playVideo = async () => {
+        try {
+            if (videoRef.current) {
+                await videoRef.current.play();
             }
-          };
-        setPC(pc);
-        pc.onicecandidate=(e)=>{
-            if(e.candidate){
-                console.log('Ice candidate',e.candidate);
-                socket.emit('send-icecandidate-admin',id,e.candidate);
+            if (screenRef.current && hasScreenShare) {
+                await screenRef.current.play();
             }
+        } catch (error) {
+            console.error('Error playing video:', error);
         }
-        pc.setRemoteDescription(offer).then(()=>{
-            pc.createAnswer().then((answer)=>{
-                console.log('Answer created',answer);
-                pc.setLocalDescription(answer);
-                socket.emit('send-answer',id,answer);
-            })
-        })
-    })
-    //recieve ice candidate from the admin
-    socket.on('recieve-icecandidate',(icecandidate)=>{
-        pc?.addIceCandidate(icecandidate);
-    })
-console.log('Connected to server');
-  })
+    };
 
-  //disconnect from the server when the user leaves the page
-  const handleBeforeunload=()=>{
-    socket.disconnect();
-  }
-  window.addEventListener("beforeunload",handleBeforeunload);
-    return ()=>{
-      socket.disconnect();
-      window.addEventListener("beforeunload",handleBeforeunload);
-    }
-    },[])
+    useEffect(() => {
+        const peerConnection = new RTCPeerConnection({
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+            ],
+        });
 
-  return (
-    <>
-      <div className='container bg-blue-400 p-4 flex justify-center items-center flex-col relative'>
-        <h1 className='text-xl font-extrabold '>Reciever</h1>
-        {iscopy&&<p className='text-black bg-white p-2 rounded-xl absolute '>Copied..</p>}
-        <h3 className='font-semibold flex justify-center items-center'>Stream ID: <span className='font-bold text-gray-900'>{id}</span> <FaRegCopy className='mx-2 text-green-800'
-        onClick={()=>{
-            setIscopy(true);
-            setTimeout(()=>{
-                setIscopy(false);
-            },1000)
-            if (id) {
-                navigator.clipboard.writeText(id);
+        if (videoRef.current) {
+            videoRef.current.srcObject = videoStream;
+        }
+        if (screenRef.current) {
+            screenRef.current.srcObject = screenStream;
+        }
+
+        peerConnection.ontrack = (e) => {
+            const track = e.track;
+            const streams = e.streams;
+
+            if (streams[0]) {
+                if (track.kind === 'video' && !hasScreenShare) {
+                    videoStream.addTrack(track);
+                    setHasTrack(true);
+                } else if (track.kind === 'video' && hasScreenShare) {
+                    screenStream.addTrack(track);
+                }
             }
-        }}
-        /></h3>
-        <p className='text-gray-600'>Share this stream id with other person you want to join the stream.</p>
-      </div>
-      <div className='flex justify-center items-center p-4 bg-gray-100 rounded m-1'>
-      <h1 className='text-lg font-light r'>
-        Wait for the admin to start the stream.
-       
-      </h1>
-      </div>
-      <div className='flex justify-center items-center p-4 bg-gray-100 rounded m-1'>
-        <video id='video' autoPlay ref={ref}></video>
-      </div>
-    </>
-  )
-}
+        };
 
-export default Reciever
+        peerConnection.onicecandidate = (e) => {
+            if (e.candidate) {
+                socket.emit('send-icecandidate-admin', id, e.candidate);
+            }
+        };
+
+        setPC(peerConnection);
+
+        socket.on('connect', () => {
+            if (id) {
+                socket.emit('join-room', id);
+            }
+        });
+
+        socket.on('screen-share-started', () => {
+            setHasScreenShare(true);
+        });
+
+        socket.on('screen-share-stopped', () => {
+            setHasScreenShare(false);
+            if (screenStream) {
+                screenStream.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        socket.on('recieve-offer', async (offer) => {
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit('send-answer', id, answer);
+            } catch (error) {
+                console.error('Error handling offer:', error);
+            }
+        });
+
+        socket.on('recieve-icecandidate', async (icecandidate) => {
+            try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(icecandidate));
+            } catch (error) {
+                console.error('Error adding ICE candidate:', error);
+            }
+        });
+
+        const handleBeforeunload = () => {
+            videoStream.getTracks().forEach(track => track.stop());
+            screenStream.getTracks().forEach(track => track.stop());
+            socket.disconnect();
+        };
+
+        window.addEventListener("beforeunload", handleBeforeunload);
+
+        return () => {
+            handleBeforeunload();
+            window.removeEventListener("beforeunload", handleBeforeunload);
+            peerConnection.close();
+        };
+    }, [id]);
+
+    return (
+        <>
+            <div className='container bg-blue-400 p-4 flex justify-center items-center flex-col relative'>
+                <h1 className='text-xl font-extrabold'>Receiver</h1>
+                {iscopy && <p className='text-black bg-white p-2 rounded-xl absolute'>Copied..</p>}
+                <h3 className='font-semibold flex justify-center items-center'>
+                    Stream ID: <span className='font-bold text-gray-900'>{id}</span>
+                    <FaRegCopy className='mx-2 text-green-800 cursor-pointer'
+                        onClick={() => {
+                            setIscopy(true);
+                            setTimeout(() => {
+                                setIscopy(false);
+                            }, 1000);
+                            if (id) {
+                                navigator.clipboard.writeText(id);
+                            }
+                        }}
+                    />
+                </h3>
+                <p className='text-gray-600'>Share this stream id with other person you want to join the stream.</p>
+            </div>
+            <div className='flex justify-center items-center p-4 bg-gray-100 rounded m-1'>
+                <h1 className='text-lg font-light'>
+                    Wait for the admin to start the stream.
+                </h1>
+            </div>
+            <div className='flex justify-center items-center flex-col gap-4'>
+                <div className='p-4 bg-gray-100 rounded m-1'>
+                    <h2 className='text-lg font-semibold mb-2'>Camera Feed</h2>
+                    <video 
+                        ref={videoRef}
+                        playsInline
+                        className="w-full max-w-2xl"
+                        style={{ backgroundColor: '#000' }}
+                    />
+                </div>
+                {hasScreenShare && (
+                    <div className='p-4 bg-gray-100 rounded m-1'>
+                        <h2 className='text-lg font-semibold mb-2'>Screen Share</h2>
+                        <video 
+                            ref={screenRef}
+                            playsInline
+                            className="w-full max-w-2xl"
+                            style={{ backgroundColor: '#000' }}
+                        />
+                    </div>
+                )}
+                {hasTrack && (
+                    <button
+                        onClick={playVideo}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                    >
+                        Play Video
+                    </button>
+                )}
+            </div>
+        </>
+    );
+};
+
+export default Receiver;
