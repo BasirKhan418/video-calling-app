@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 
 const Sender = () => {
     const [iscopy, setIscopy] = React.useState(false);
-    const socket = useMemo(() => io('http://localhost:3000'), [])
+    const socket = useMemo(() => io('https://video.deploylite.tech'), [])
     const [pc, setPC] = useState<RTCPeerConnection | null>(null);
     const [searchParams] = useSearchParams();
     const id = searchParams.get('id');
@@ -112,7 +112,7 @@ const Sender = () => {
 
     return (
         <>
-            <div className='container bg-green-400 p-4 flex justify-center items-center flex-col relative'>
+            <div className='bg-green-400 p-4 flex justify-center items-center flex-col relative'>
                 <h1 className='text-xl font-extrabold'>Sender</h1>
                 {iscopy && <p className='text-black bg-white p-2 rounded-xl absolute'>Copied..</p>}
                 <h3 className='font-semibold flex justify-center items-center'>
