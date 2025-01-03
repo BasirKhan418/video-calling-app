@@ -1,4 +1,4 @@
-import React from 'react';
+
 import Home from './components/Home';
 import Reciever from './components/Reciever';
 import Sender from './components/Sender';
