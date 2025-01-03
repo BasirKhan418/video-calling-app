@@ -42,16 +42,12 @@ const Receiver = () => {
         }
 
         peerConnection.ontrack = (e) => {
-            const track = e.track;
-            const streams = e.streams;
-
-            if (streams[0]) {
-                if (track.kind === 'video') {
-                    videoStream.addTrack(track);
-                    setHasTrack(true);
-                    
-                } 
+            if(videoRef.current){
+                setHasTrack(true);
+                videoRef.current.srcObject = new MediaStream([e.track]);
             }
+            
+
         };
 
         peerConnection.onicecandidate = (e) => {
@@ -134,7 +130,6 @@ const Receiver = () => {
                     <h2 className='text-lg font-semibold mb-2'>Camera Feed</h2>
                     <video 
                         ref={videoRef}
-                        playsInline
                         className="w-full max-w-2xl"
                         style={{ backgroundColor: '#000' }}
                     />
