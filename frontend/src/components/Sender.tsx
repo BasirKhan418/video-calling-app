@@ -10,11 +10,9 @@ const Sender = () => {
     const [pc, setPC] = useState<RTCPeerConnection | null>(null);
     const [searchParams] = useSearchParams();
     const id = searchParams.get('id');
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const screenRef = useRef<HTMLVideoElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null)
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-    const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
-    const [isScreenSharing, setIsScreenSharing] = useState(false);
+    const [startedStream, setStartedStream] = useState(false);
 
     const mediaStream = async (peerConnection: RTCPeerConnection) => {
         try {
@@ -37,60 +35,15 @@ const Sender = () => {
         }
     };
 
-    const startScreenShare = async () => {
-        if (!pc) return;
-        
-        try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ 
-                video: true,
-                audio: true 
-            });
-            
-            if (screenRef.current) {
-                screenRef.current.srcObject = stream;
-            }
-            
-            stream.getTracks().forEach(track => {
-                pc.addTrack(track, stream);
-                track.onended = () => {
-                    stopScreenShare();
-                };
-            });
-            
-            setScreenStream(stream);
-            setIsScreenSharing(true);
-            
-            // Notify receiver about screen sharing start
-            socket.emit('screen-share-started', id);
-        } catch (error) {
-            console.error('Error starting screen share:', error);
-        }
-    };
 
-    const stopScreenShare = () => {
-        if (screenStream) {
-            screenStream.getTracks().forEach(track => {
-                track.stop();
-                if (pc) {
-                    const senders = pc.getSenders();
-                    const sender = senders.find(s => s.track === track);
-                    if (sender) {
-                        pc.removeTrack(sender);
-                    }
-                }
-            });
-            setScreenStream(null);
-            setIsScreenSharing(false);
-            
-            // Notify receiver about screen sharing stop
-            socket.emit('screen-share-stopped', id);
-        }
-    };
+
+    
 
     const createOfferAndStream = async () => {
         if (!pc) return;
         
         try {
+            setStartedStream(true);
             await mediaStream(pc);
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
@@ -145,9 +98,6 @@ const Sender = () => {
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
             }
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
-            }
             socket.disconnect();
         };
 
@@ -183,17 +133,12 @@ const Sender = () => {
             </div>
             <div className='flex justify-center items-center p-4 bg-gray-100 rounded m-1'>
                 <h1 className='text-lg font-light'>
-                    Waiting for the other person to join the stream.
-                    <button className='bg-red-600 text-white px-4 py-2 rounded-md mx-2 my-2 hover:bg-red-800'
-                        onClick={createOfferAndStream}>
-                        Start the Stream
+                    {!startedStream?"Waiting for the other person to join the stream...":"Stream started. You can now take the session."}
+                    <button className='bg-red-600 text-white px-4 py-2 rounded-md mx-2 my-2 hover:bg-red-800 disabled:bg-red-400'
+                        onClick={createOfferAndStream} disabled={startedStream}>
+                        {startedStream?"Stream Started...":"Start Stream"}
                     </button>
-                    <button 
-                        className={`${isScreenSharing ? 'bg-red-600' : 'bg-blue-600'} text-white px-4 py-2 rounded-md mx-2 my-2 hover:opacity-80`}
-                        onClick={isScreenSharing ? stopScreenShare : startScreenShare}
-                    >
-                        {isScreenSharing ? 'Stop Screen Share' : 'Start Screen Share'}
-                    </button>
+                  
                 </h1>
             </div>
             <div className='flex justify-center items-center flex-col gap-4'>
@@ -201,12 +146,7 @@ const Sender = () => {
                     <h2 className='text-lg font-semibold mb-2'>Camera Feed</h2>
                     <video id='local-video' autoPlay ref={videoRef}></video>
                 </div>
-                {isScreenSharing && (
-                    <div className='p-4 bg-gray-100 rounded m-1'>
-                        <h2 className='text-lg font-semibold mb-2'>Screen Share</h2>
-                        <video id='screen-video' autoPlay ref={screenRef}></video>
-                    </div>
-                )}
+                
             </div>
         </>
     );

@@ -54,6 +54,12 @@ io.on('connection', (socket) => {
         console.log('Ice candidate sent to admin', icecandidate);
         io.to(roomid).emit('recieve-icecandidate-admin', icecandidate);
     });
+    socket.on("start-sharing-screen", (roomid) => {
+        io.to(roomid).emit('recieve-screen-share', true);
+    });
+    socket.on("stop-sharing-screen", (roomid) => {
+        io.to(roomid).emit('recieve-stop-screen-share', true);
+    });
     //disconnecting from the server
     socket.on('disconnect', () => {
         console.log('User disconnected', socket.id);

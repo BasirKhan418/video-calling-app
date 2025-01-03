@@ -8,7 +8,6 @@ const Receiver = () => {
     const [iscopy, setIscopy] = React.useState(false);
     const [pc, setPC] = useState<RTCPeerConnection | null>(null);
     const [hasTrack, setHasTrack] = useState(false);
-    const [hasScreenShare, setHasScreenShare] = useState(false);
     const socket = useMemo(() => io('http://localhost:3000'), []);
     const [searchParams] = useSearchParams();
     const id = searchParams.get('id');
@@ -21,9 +20,6 @@ const Receiver = () => {
         try {
             if (videoRef.current) {
                 await videoRef.current.play();
-            }
-            if (screenRef.current && hasScreenShare) {
-                await screenRef.current.play();
             }
         } catch (error) {
             console.error('Error playing video:', error);
@@ -49,12 +45,11 @@ const Receiver = () => {
             const streams = e.streams;
 
             if (streams[0]) {
-                if (track.kind === 'video' && !hasScreenShare) {
+                if (track.kind === 'video') {
                     videoStream.addTrack(track);
                     setHasTrack(true);
-                } else if (track.kind === 'video' && hasScreenShare) {
-                    screenStream.addTrack(track);
-                }
+                    
+                } 
             }
         };
 
@@ -72,16 +67,6 @@ const Receiver = () => {
             }
         });
 
-        socket.on('screen-share-started', () => {
-            setHasScreenShare(true);
-        });
-
-        socket.on('screen-share-stopped', () => {
-            setHasScreenShare(false);
-            if (screenStream) {
-                screenStream.getTracks().forEach(track => track.stop());
-            }
-        });
 
         socket.on('recieve-offer', async (offer) => {
             try {
@@ -140,7 +125,7 @@ const Receiver = () => {
             </div>
             <div className='flex justify-center items-center p-4 bg-gray-100 rounded m-1'>
                 <h1 className='text-lg font-light'>
-                    Wait for the admin to start the stream.
+                    {!hasTrack?"Wait for the admin to start the stream.":"Admin has started the stream. Click on play video to start the stream."}
                 </h1>
             </div>
             <div className='flex justify-center items-center flex-col gap-4'>
@@ -153,25 +138,15 @@ const Receiver = () => {
                         style={{ backgroundColor: '#000' }}
                     />
                 </div>
-                {hasScreenShare && (
-                    <div className='p-4 bg-gray-100 rounded m-1'>
-                        <h2 className='text-lg font-semibold mb-2'>Screen Share</h2>
-                        <video 
-                            ref={screenRef}
-                            playsInline
-                            className="w-full max-w-2xl"
-                            style={{ backgroundColor: '#000' }}
-                        />
-                    </div>
-                )}
-                {hasTrack && (
-                    <button
+                
+                
+                   { hasTrack&&<button
                         onClick={playVideo}
                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
                     >
                         Play Video
-                    </button>
-                )}
+                    </button>}
+              
             </div>
         </>
     );
